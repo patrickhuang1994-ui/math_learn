@@ -1,3 +1,3 @@
 @echo off
 chcp 65001 >nul
-start "" "%~dp0index.html"
+start "" "%~dp0trajectory-boundary-fit.html"

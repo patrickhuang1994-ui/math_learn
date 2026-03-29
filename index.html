@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>小学数学练习</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --text: #1a2332;
+      --muted: #5c6b7a;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --ok: #059669;
+      --ok-bg: #d1fae5;
+      --bad: #dc2626;
+      --bad-bg: #fee2e2;
+      --radius: 16px;
+      --shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui,
+        sans-serif;
+      background: linear-gradient(160deg, #e8f0fe 0%, var(--bg) 45%, #fef3e2 100%);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .panel {
+      width: min(440px, 100%);
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .ops {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .ops label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--bg);
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      border: 2px solid transparent;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .ops label:has(input:checked) {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .ops input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+      margin-bottom: 20px;
+    }
+
+    .field {
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 1rem;
+      font-family: inherit;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .btn {
+      padding: 12px 20px;
+      font-size: 1rem;
+      font-family: inherit;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.15s;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-ghost {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .btn-ghost:hover {
+      background: #e2e8f0;
+    }
+
+    .quiz-area {
+      border-top: 1px solid #e8eef4;
+      padding-top: 20px;
+      margin-top: 4px;
+    }
+
+    .problem {
+      font-size: clamp(2rem, 8vw, 2.75rem);
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.05em;
+      margin: 16px 0 20px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .answer-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .answer-row input[type="number"] {
+      width: 140px;
+      padding: 14px 16px;
+      font-size: 1.35rem;
+      font-family: inherit;
+      text-align: center;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+    }
+
+    .answer-row input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .answer-row input::-webkit-outer-spin-button,
+    .answer-row input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .feedback {
+      min-height: 28px;
+      text-align: center;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 14px;
+    }
+
+    .feedback.ok {
+      color: var(--ok);
+    }
+
+    .feedback.bad {
+      color: var(--bad);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #e8eef4;
+    }
+
+    .stat {
+      text-align: center;
+      padding: 10px;
+      background: var(--bg);
+      border-radius: 10px;
+    }
+
+    .stat .num {
+      font-size: 1.35rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat .lbl {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    footer {
+      margin-top: 28px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>小学数学练习</h1>
+    <p>选择题型与难度，开始答题吧</p>
+  </header>
+
+  <main class="panel">
+    <div class="section-title">运算类型</div>
+    <div class="ops" id="ops">
+      <label><input type="checkbox" value="add" checked /> 加法</label>
+      <label><input type="checkbox" value="sub" checked /> 减法</label>
+      <label><input type="checkbox" value="mul" checked /> 乘法</label>
+      <label><input type="checkbox" value="div" checked /> 除法</label>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="range">数字范围</label>
+        <select id="range">
+          <option value="10">10 以内</option>
+          <option value="20" selected>20 以内</option>
+          <option value="50">50 以内</option>
+          <option value="100">100 以内</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-primary" id="newBtn">换一题</button>
+    </div>
+
+    <div class="quiz-area">
+      <div class="problem" id="problem">—</div>
+      <div class="answer-row">
+        <input type="number" id="answer" placeholder="?" inputmode="numeric" autocomplete="off" />
+        <button type="button" class="btn btn-primary" id="submitBtn">提交</button>
+      </div>
+      <div class="feedback" id="feedback" aria-live="polite"></div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="num" id="statCorrect">0</div>
+          <div class="lbl">答对</div>
+        </div>
+        <div class="stat">
+          <div class="num" id="statWrong">0</div>
+          <div class="lbl">答错</div>
+        </div>
+        <div class="stat">
+          <div class="num" id="statStreak">0</div>
+          <div class="lbl">连对</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px; text-align: center;">
+        <button type="button" class="btn btn-ghost" id="resetBtn">清空统计</button>
+      </div>
+    </div>
+  </main>
+
+  <footer>加减乘除随机出题 · 减法与除法保证结果为整数且非负</footer>
+
+  <script>
+    (function () {
+      const opsEl = document.getElementById("ops");
+      const rangeEl = document.getElementById("range");
+      const problemEl = document.getElementById("problem");
+      const answerEl = document.getElementById("answer");
+      const feedbackEl = document.getElementById("feedback");
+      const newBtn = document.getElementById("newBtn");
+      const submitBtn = document.getElementById("submitBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const statCorrect = document.getElementById("statCorrect");
+      const statWrong = document.getElementById("statWrong");
+      const statStreak = document.getElementById("statStreak");
+
+      let state = {
+        a: 0,
+        b: 0,
+        op: "add",
+        expected: 0,
+        symbol: "+",
+      };
+
+      let correct = 0;
+      let wrong = 0;
+      let streak = 0;
+
+      function randInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+
+      function getSelectedOps() {
+        return Array.from(opsEl.querySelectorAll('input[type="checkbox"]:checked')).map(
+          (c) => c.value
+        );
+      }
+
+      function pickProblem(max) {
+        const types = getSelectedOps();
+        if (types.length === 0) {
+          return null;
+        }
+        const t = types[randInt(0, types.length - 1)];
+        let a, b, expected, symbol;
+
+        switch (t) {
+          case "add": {
+            a = randInt(0, max);
+            b = randInt(0, max);
+            expected = a + b;
+            symbol = "+";
+            break;
+          }
+          case "sub": {
+            a = randInt(0, max);
+            b = randInt(0, a);
+            expected = a - b;
+            symbol = "−";
+            break;
+          }
+          case "mul": {
+            const cap = Math.min(max, 12);
+            a = randInt(0, cap);
+            b = randInt(0, cap);
+            expected = a * b;
+            symbol = "×";
+            break;
+          }
+          case "div": {
+            b = randInt(1, Math.min(max, 12));
+            const q = randInt(0, Math.floor(max / b));
+            a = q * b;
+            expected = q;
+            symbol = "÷";
+            break;
+          }
+          default:
+            return null;
+        }
+
+        return { a, b, op: t, expected, symbol };
+      }
+
+      function renderProblem() {
+        const max = parseInt(rangeEl.value, 10);
+        let p = pickProblem(max);
+        let guard = 0;
+        while (!p && guard++ < 50) {
+          p = pickProblem(max);
+        }
+        if (!p) {
+          problemEl.textContent = "请至少选一种运算";
+          state = null;
+          return;
+        }
+        state = p;
+        problemEl.textContent = `${state.a} ${state.symbol} ${state.b} =`;
+        feedbackEl.textContent = "";
+        feedbackEl.className = "feedback";
+        answerEl.value = "";
+        answerEl.focus();
+      }
+
+      function updateStats() {
+        statCorrect.textContent = String(correct);
+        statWrong.textContent = String(wrong);
+        statStreak.textContent = String(streak);
+      }
+
+      function check() {
+        if (!state) {
+          renderProblem();
+          return;
+        }
+        const raw = answerEl.value.trim();
+        if (raw === "") {
+          feedbackEl.textContent = "请输入答案";
+          feedbackEl.className = "feedback bad";
+          return;
+        }
+        const n = parseInt(raw, 10);
+        if (Number.isNaN(n)) {
+          feedbackEl.textContent = "请输入整数";
+          feedbackEl.className = "feedback bad";
+          return;
+        }
+        if (n === state.expected) {
+          correct++;
+          streak++;
+          feedbackEl.textContent = "答对了！";
+          feedbackEl.className = "feedback ok";
+          updateStats();
+          setTimeout(renderProblem, 450);
+        } else {
+          wrong++;
+          streak = 0;
+          feedbackEl.textContent = `再想想，正确答案是 ${state.expected}`;
+          feedbackEl.className = "feedback bad";
+          updateStats();
+        }
+      }
+
+      newBtn.addEventListener("click", renderProblem);
+      submitBtn.addEventListener("click", check);
+      answerEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") check();
+      });
+      resetBtn.addEventListener("click", () => {
+        correct = wrong = streak = 0;
+        updateStats();
+        feedbackEl.textContent = "";
+        feedbackEl.className = "feedback";
+      });
+
+      rangeEl.addEventListener("change", renderProblem);
+
+      renderProblem();
+      updateStats();
+    })();
+  </script>
+</body>
+</html>

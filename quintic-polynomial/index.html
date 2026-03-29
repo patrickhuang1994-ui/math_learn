@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>行车轨迹 — 边界多项式拟合</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --text: #1a2332;
+      --muted: #5c6b7a;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --radius: 16px;
+      --shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui,
+        sans-serif;
+      background: linear-gradient(160deg, #e8f0fe 0%, var(--bg) 45%, #fef3e2 100%);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.35rem, 4vw, 1.85rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      max-width: 40em;
+      line-height: 1.55;
+      text-align: left;
+    }
+
+    .panel {
+      width: min(1200px, 100%);
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .layout-split {
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.15fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .layout-split {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .col-plots {
+      min-width: 0;
+    }
+
+    .col-plots .plots-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .section-title:not(:first-of-type) {
+      margin-top: 20px;
+    }
+
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 18px;
+    }
+
+    @media (max-width: 520px) {
+      .row-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    label span.unit {
+      font-weight: 400;
+      opacity: 0.85;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-family: ui-monospace, Consolas, monospace;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .hint {
+      font-size: 0.84rem;
+      color: var(--muted);
+      margin-top: 10px;
+      line-height: 1.45;
+    }
+
+    .actions {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 12px 22px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .error {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #fef2f2;
+      color: #b91c1c;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .error.visible {
+      display: block;
+    }
+
+    .result-summary {
+      margin-top: 22px;
+      padding-top: 22px;
+      border-top: 1px solid #e2e8f0;
+      display: none;
+    }
+
+    .result-summary.visible {
+      display: block;
+    }
+
+    .result {
+      display: none;
+    }
+
+    .result.visible {
+      display: block;
+    }
+
+    .equation {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.65;
+      word-break: break-all;
+      background: #f8fafc;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      white-space: pre-wrap;
+    }
+
+    .stats {
+      margin-top: 14px;
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .stats strong {
+      color: var(--text);
+    }
+
+    .plots {
+      margin-top: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .plot-wrap {
+      border-radius: 12px;
+      background: #fafbfc;
+      border: 1px solid #e2e8f0;
+      padding: 8px 10px 6px;
+    }
+
+    .plot-wrap .cap {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      padding-left: 4px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>行车轨迹边界拟合</h1>
+    <p>
+      以时间 <strong>t</strong> 为自变量（0 → 总时间 <strong>T</strong>），纵向位置 <strong>s(t)</strong> 对时间求导得到车速
+      <strong>v = s′</strong>、加速度 <strong>a = s″</strong>、加速度斜率（加加速度）<strong>j = s‴</strong>。
+      在起点与终点各指定 <strong>s, v, a, j</strong> 共 8 个边界条件，可唯一确定一条
+      <strong>7 次</strong> 位置多项式（8 个系数）。若只约束两端 <strong>s, v, a</strong>（6 个条件），才对应经典的 5 次多项式；本工具按你给出的「加速度斜率」两端约束计算。
+    </p>
+  </header>
+
+  <main class="panel layout-split">
+    <div class="col-settings">
+      <div class="section-title">时间与位置参考</div>
+      <div class="row-2">
+        <div>
+          <label for="T">总时间 T <span class="unit">(s)</span></label>
+          <input type="number" id="T" step="any" value="10" />
+        </div>
+        <div>
+          <label for="s0">起点位置 s₀ <span class="unit">(m)</span></label>
+          <input type="number" id="s0" step="any" value="0" />
+        </div>
+      </div>
+      <p class="hint">终端「距离」指终点位置 s₁（沿路径的弧长坐标）；若从原点出发，s₁ 即为行驶路程。</p>
+
+      <div class="section-title">当前（t = 0）</div>
+      <div class="row-2">
+        <div>
+          <label for="v0">车速 v₀ <span class="unit">(m/s)</span></label>
+          <input type="number" id="v0" step="any" value="20" />
+        </div>
+        <div>
+          <label for="a0">加速度 a₀ <span class="unit">(m/s²)</span></label>
+          <input type="number" id="a0" step="any" value="0" />
+        </div>
+        <div>
+          <label for="j0">加速度斜率 j₀ <span class="unit">(m/s³)</span></label>
+          <input type="number" id="j0" step="any" value="0" />
+        </div>
+      </div>
+
+      <div class="section-title">终端（t = T）</div>
+      <div class="row-2">
+        <div>
+          <label for="s1">终点位置 s₁ <span class="unit">(m)</span></label>
+          <input type="number" id="s1" step="any" value="200" />
+        </div>
+        <div>
+          <label for="v1">车速 v₁ <span class="unit">(m/s)</span></label>
+          <input type="number" id="v1" step="any" value="15" />
+        </div>
+        <div>
+          <label for="a1">加速度 a₁ <span class="unit">(m/s²)</span></label>
+          <input type="number" id="a1" step="any" value="0" />
+        </div>
+        <div>
+          <label for="j1">加速度斜率 j₁ <span class="unit">(m/s³)</span></label>
+          <input type="number" id="j1" step="any" value="0" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="fit">计算轨迹多项式并绘图</button>
+      </div>
+      <div class="error" id="err" role="alert"></div>
+      <div class="result-summary" id="outSummary">
+        <div class="section-title">位置多项式 s(t) 系数 c₀…c₇（s = Σ cₖ tᵏ）</div>
+        <div class="equation" id="coef"></div>
+        <div class="stats" id="stats"></div>
+      </div>
+    </div>
+
+    <div class="col-plots">
+      <div class="plots-title">轨迹曲线</div>
+      <div class="result" id="out">
+        <div class="plots">
+          <div class="plot-wrap">
+            <div class="cap">位置 s(t) — m</div>
+            <canvas id="plotS" width="600" height="160"></canvas>
+          </div>
+          <div class="plot-wrap">
+            <div class="cap">车速 v(t) — m/s</div>
+            <canvas id="plotV" width="600" height="160"></canvas>
+          </div>
+          <div class="plot-wrap">
+            <div class="cap">加速度 a(t) — m/s²</div>
+            <canvas id="plotA" width="600" height="160"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      function solveLinear(n, Aflat, b) {
+        const M = [];
+        for (let r = 0; r < n; r++) {
+          M[r] = [];
+          for (let c = 0; c < n; c++) M[r][c] = Aflat[r * n + c];
+          M[r][n] = b[r];
+        }
+        const eps = 1e-14;
+        for (let col = 0; col < n; col++) {
+          let piv = col;
+          let best = Math.abs(M[col][col]);
+          for (let r = col + 1; r < n; r++) {
+            const v = Math.abs(M[r][col]);
+            if (v > best) {
+              best = v;
+              piv = r;
+            }
+          }
+          if (best < eps) return null;
+          if (piv !== col) {
+            const tmp = M[col];
+            M[col] = M[piv];
+            M[piv] = tmp;
+          }
+          const div = M[col][col];
+          for (let c = col; c <= n; c++) M[col][c] /= div;
+          for (let r = 0; r < n; r++) {
+            if (r === col) continue;
+            const f = M[r][col];
+            if (Math.abs(f) < eps) continue;
+            for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c];
+          }
+        }
+        const x = [];
+        for (let r = 0; r < n; r++) x.push(M[r][n]);
+        return x;
+      }
+
+      /** s(t) = sum c[k]*t^k, k=0..7 */
+      function evalS(c, t) {
+        let s = 0;
+        let p = 1;
+        for (let k = 0; k < 8; k++) {
+          s += c[k] * p;
+          p *= t;
+        }
+        return s;
+      }
+
+      function evalV(c, t) {
+        let v = 0;
+        let p = 1;
+        for (let k = 1; k < 8; k++) {
+          v += k * c[k] * p;
+          p *= t;
+        }
+        return v;
+      }
+
+      function evalA(c, t) {
+        let a = 0;
+        let p = 1;
+        for (let k = 2; k < 8; k++) {
+          a += k * (k - 1) * c[k] * p;
+          p *= t;
+        }
+        return a;
+      }
+
+      function evalJ(c, t) {
+        let j = 0;
+        let p = 1;
+        for (let k = 3; k < 8; k++) {
+          j += k * (k - 1) * (k - 2) * c[k] * p;
+          p *= t;
+        }
+        return j;
+      }
+
+      function fmt(x) {
+        const ax = Math.abs(x);
+        if (ax >= 1e5 || (ax > 0 && ax < 1e-4)) return x.toExponential(5);
+        const s = x.toFixed(8).replace(/\.?0+$/, "");
+        return s === "-0" ? "0" : s;
+      }
+
+      function solveTrajectory(T, s0, v0, a0, j0, s1, v1, a1, j1) {
+        if (!(T > 0) || !Number.isFinite(T)) return { error: "总时间 T 须为有限正数。" };
+
+        const c0 = s0;
+        const c1 = v0;
+        const c2 = a0 / 2;
+        const c3 = j0 / 6;
+
+        const T2 = T * T;
+        const T3 = T2 * T;
+        const T4 = T3 * T;
+        const T5 = T4 * T;
+        const T6 = T5 * T;
+        const T7 = T6 * T;
+
+        const baseS = c0 + c1 * T + c2 * T2 + c3 * T3;
+        const baseV = c1 + 2 * c2 * T + 3 * c3 * T2;
+        const baseA = 2 * c2 + 6 * c3 * T;
+        const baseJ = 6 * c3;
+
+        const b0 = s1 - baseS;
+        const b1 = v1 - baseV;
+        const b2 = a1 - baseA;
+        const b3 = j1 - baseJ;
+
+        const A = [
+          T4,
+          T5,
+          T6,
+          T7,
+          4 * T3,
+          5 * T4,
+          6 * T5,
+          7 * T6,
+          12 * T2,
+          20 * T3,
+          30 * T4,
+          42 * T5,
+          24 * T,
+          60 * T2,
+          120 * T3,
+          210 * T4,
+        ];
+
+        const hi = solveLinear(4, A, [b0, b1, b2, b3]);
+        if (!hi) return { error: "末端方程组接近奇异（可能与时间 T 或边界组合有关），无法求解。" };
+
+        const c = [c0, c1, c2, c3, hi[0], hi[1], hi[2], hi[3]];
+        return { c };
+      }
+
+      document.getElementById("fit").addEventListener("click", function () {
+        const errEl = document.getElementById("err");
+        const outEl = document.getElementById("out");
+        const outSummaryEl = document.getElementById("outSummary");
+        errEl.classList.remove("visible");
+        outEl.classList.remove("visible");
+        outSummaryEl.classList.remove("visible");
+        errEl.textContent = "";
+
+        const num = (id) => {
+          const v = parseFloat(document.getElementById(id).value);
+          return Number.isFinite(v) ? v : NaN;
+        };
+
+        const T = num("T");
+        const s0 = num("s0");
+        const v0 = num("v0");
+        const a0 = num("a0");
+        const j0 = num("j0");
+        const s1 = num("s1");
+        const v1 = num("v1");
+        const a1 = num("a1");
+        const j1 = num("j1");
+
+        if ([T, s0, v0, a0, j0, s1, v1, a1, j1].some((x) => !Number.isFinite(x))) {
+          errEl.textContent = "请将所有字段填写为有效数字。";
+          errEl.classList.add("visible");
+          return;
+        }
+
+        const res = solveTrajectory(T, s0, v0, a0, j0, s1, v1, a1, j1);
+        if (res.error) {
+          errEl.textContent = res.error;
+          errEl.classList.add("visible");
+          return;
+        }
+
+        const c = res.c;
+        const lines = [];
+        for (let k = 0; k < 8; k++) {
+          lines.push("c" + k + " = " + fmt(c[k]));
+        }
+        document.getElementById("coef").textContent = lines.join("\n");
+
+        const chk = [];
+        chk.push(
+          "校核 t=0：s=" +
+            fmt(evalS(c, 0)) +
+            "，v=" +
+            fmt(evalV(c, 0)) +
+            "，a=" +
+            fmt(evalA(c, 0)) +
+            "，j=" +
+            fmt(evalJ(c, 0))
+        );
+        chk.push(
+          "校核 t=T：s=" +
+            fmt(evalS(c, T)) +
+            "，v=" +
+            fmt(evalV(c, T)) +
+            "，a=" +
+            fmt(evalA(c, T)) +
+            "，j=" +
+            fmt(evalJ(c, T))
+        );
+        document.getElementById("stats").innerHTML =
+          "<strong>目标</strong>：t=0 时 (s,v,a,j)=(" +
+          [s0, v0, a0, j0].map(fmt).join(", ") +
+          ")；t=T 时 (" +
+          [s1, v1, a1, j1].map(fmt).join(", ") +
+          ")<br>" +
+          chk.join("<br>");
+
+        const fixDraw = (id, fn, cap) => {
+          const canvas = document.getElementById(id);
+          const ctx = canvas.getContext("2d");
+          const w = canvas.width;
+          const h = canvas.height;
+          const padL = 44;
+          const padR = 12;
+          const padT = 10;
+          const padB = 28;
+          const innerW = w - padL - padR;
+          const innerH = h - padT - padB;
+          const t0 = 0;
+          const t1 = T;
+          const samples = 160;
+          const ys = [];
+          for (let i = 0; i <= samples; i++) {
+            const t = t0 + (i / samples) * (t1 - t0);
+            ys.push(fn(t));
+          }
+          let ymin = Math.min.apply(null, ys);
+          let ymax = Math.max.apply(null, ys);
+          if (ymin === ymax) {
+            ymin -= 1;
+            ymax += 1;
+          }
+          const span = ymax - ymin;
+          ymin -= span * 0.08;
+          ymax += span * 0.08;
+
+          ctx.fillStyle = "#fafbfc";
+          ctx.fillRect(0, 0, w, h);
+          ctx.strokeStyle = "#e2e8f0";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(padL, padT);
+          ctx.lineTo(padL, padT + innerH);
+          ctx.lineTo(padL + innerW, padT + innerH);
+          ctx.stroke();
+
+          const X = (t) => padL + ((t - t0) / (t1 - t0)) * innerW;
+          const Y = (y) => padT + innerH - ((y - ymin) / (ymax - ymin)) * innerH;
+
+          ctx.strokeStyle = "#2563eb";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let i = 0; i <= samples; i++) {
+            const t = t0 + (i / samples) * (t1 - t0);
+            const px = X(t);
+            const py = Y(ys[i]);
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+
+          ctx.fillStyle = "#64748b";
+          ctx.font = "11px system-ui, sans-serif";
+          ctx.fillText("t→", padL + innerW - 18, padT + innerH + 20);
+          ctx.fillText(cap, padL, padT - 1);
+          ctx.font = "10px ui-monospace, monospace";
+          ctx.fillText(fmt(ymin), 4, padT + innerH);
+          ctx.fillText(fmt(ymax), 4, padT + 10);
+        };
+
+        fixDraw("plotS", (t) => evalS(c, t), "s(t)");
+        fixDraw("plotV", (t) => evalV(c, t), "v(t)");
+        fixDraw("plotA", (t) => evalA(c, t), "a(t)");
+
+        outSummaryEl.classList.add("visible");
+        outEl.classList.add("visible");
+      });
+    })();
+  </script>
+</body>
+</html>
